@@ -1,0 +1,41 @@
+sender,subject,body,label
+security@paypa1.net,URGENT: Verify your account NOW,Your account will be suspended in 24 hours. Click here to verify: http://paypa1-login.ru/verify,1
+no-reply@amaz0n-support.com,Suspicious sign-in attempt,We detected a login from a new device. Confirm your password immediately or your account will be locked.,1
+hr-dept@mycompany-benefits.co,Action required: Update payroll info,Please re-enter your bank details within 12 hours to continue receiving paychecks. https://bit.ly/payroll-upd,1
+admin@secure-update.org,Your mailbox is full,Click the link below to verify your identity and restore mailbox access or lose all data.,1
+it-helpdesk@support-portal.info,Password expires today,Immediate action required. Reset your password within 1 hour using this secure link: http://reset-now.xyz,1
+billing@netfl1x-accounts.com,We couldn't process your payment,Update your credit card info within 24 hours to avoid service interruption. Click verify.,1
+ceo@yourcomp4ny.com,Quick favor,Are you at your desk? I need you to purchase gift cards for a client. Keep this confidential.,1
+alert@chase-online.security-check.com,Unusual activity detected,We have temporarily frozen your account. Verify now to restore access: http://chase-verify.tk,1
+docusign@doc-sign-secure.net,You have a document to sign,Important document awaiting your signature. Login here to review before deadline today.,1
+wellsfargo@w3llsfargo-notify.com,Your wire transfer is pending,Confirm your routing number and password to release the pending wire.,1
+fedex-delivery@track-package.co,Package delivery failed,Please pay a $2.99 redelivery fee here to receive your package: http://fedex-redeliver.shop,1
+support@apple-id-secure.com,Apple ID locked,Your Apple ID has been locked due to suspicious activity. Unlock now to prevent termination.,1
+hr@onboarding-portal.click,Complete onboarding paperwork,Urgent: sign the attached forms within 2 hours or your start date will be cancelled.,1
+irs-refund@tax-refund-gov.us,"You have a tax refund of $1,284.00",Claim your refund by providing your SSN and banking details at the secure link below.,1
+office365@microsft-alerts.com,Email quota exceeded,Your account will be deactivated in 6 hours unless you validate credentials here.,1
+linked1n@jobs-connect.cf,Someone viewed your profile,Login now to see who is interested in hiring you. Verify password to continue.,1
+invoice@pay-remit.biz,Invoice #48217 overdue,Please wire the outstanding balance to the new account details attached. Urgent.,1
+it-admin@corp-it-support.me,Two-factor reset required,"To keep your account active, re-enroll in 2FA by entering your current password here.",1
+bank-alerts@boa-secure.review,Debit card temporarily disabled,Reactivate your card by entering the full card number and pin at this secure portal.,1
+no-reply@googIe-drive-share.com,A file was shared with you,Login with your Google password to view the confidential document before it expires.,1
+newsletter@medium.com,Your weekly digest,Here are the top stories from writers you follow this week. Enjoy reading.,0
+noreply@github.com,[repo] Pull request #42 opened,A new pull request was opened on your repository. Review the changes when you have a moment.,0
+team@slack.com,Your Slack workspace activity,You had 12 new messages in channels you follow this week. Sign in to Slack to catch up.,0
+receipts@uber.com,Your Tuesday morning trip with Uber,Thanks for riding. Your fare was $14.20 charged to your card ending in 1234.,0
+professor.jones@jjay.cuny.edu,Office hours moved to Thursday,"Hi class, I'm moving this week's office hours to Thursday 2-4pm in NB 6.64. See you then.",0
+orders@amazon.com,Your order has shipped,Your package will arrive Thursday. Track it anytime from Your Orders on amazon.com.,0
+calendar-notification@google.com,Reminder: team standup at 10am,This is a reminder for your event team standup tomorrow at 10:00am.,0
+no-reply@zoom.us,Recording ready: CSCI 401 lecture,Your cloud recording is now available. View it from your Zoom account dashboard.,0
+alerts@nytimes.com,Morning Briefing: Friday,Here's what you need to know to start your day. Read the full briefing on nytimes.com.,0
+notifications@stackoverflow.com,Answer to your question,Someone posted an answer to your question about Flask CORS. View it on stackoverflow.com.,0
+michael.cruz@jjay.cuny.edu,Backend endpoints merged,"Hey team, I just merged the /analyze and /history endpoints into main. Let me know if anything breaks.",0
+kevin.minchala@jjay.cuny.edu,Dataset notes,I'm looking at the CLAIR corpus for our phishing samples. Will share a cleaned CSV by Friday.,0
+billing@spotify.com,Your receipt from Spotify,Thanks for being a Premium member. Your $9.99 payment was successful.,0
+noreply@canvas.instructure.com,New announcement in CSCI 401,Your instructor posted an announcement about next week's assignment. Log in to Canvas to read it.,0
+friends@meetup.com,Events you might like this weekend,Here are three events near you based on your interests. RSVP any time from the Meetup app.,0
+hello@duolingo.com,Keep your streak alive!,You're on a 14-day streak. A quick 5-minute lesson will keep it going today.,0
+news@theverge.com,The Verge: today's top stories,"Catch up on the biggest tech news of the day, curated by our editors.",0
+info@jjay.cuny.edu,Library hours update,The Lloyd Sealy Library will have extended hours during finals week. See the schedule on our site.,0
+no-reply@dropbox.com,Your files are backed up,All files in your Dropbox have been synced. You have 42GB available of your 2TB plan.,0
+tickets@eventbrite.com,Your ticket confirmation,Your order for the TechConf panel is confirmed. Present this QR code at check-in.,0
