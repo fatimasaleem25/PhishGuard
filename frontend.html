@@ -10,14 +10,14 @@ body {
   color: white;
   font-family: Arial, sans-serif;
   padding: 20px;
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto;
 }
-
 h2 { margin-top: 0; }
 h2 span { color: #38bdf8; }
+h3 { margin-top: 0; }
 
-input, textarea {
+input, textarea, select {
   width: 100%;
   background: #1e293b;
   color: white;
@@ -29,7 +29,7 @@ input, textarea {
   margin-bottom: 8px;
   box-sizing: border-box;
 }
-textarea { height: 120px; resize: vertical; }
+textarea { height: 110px; resize: vertical; }
 label { font-size: 12px; color: #94a3b8; display: block; margin-top: 6px; }
 
 button {
@@ -41,8 +41,19 @@ button {
   font-weight: bold;
   cursor: pointer;
   margin-right: 6px;
+  margin-top: 4px;
 }
 button.secondary { background: #334155; color: white; }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid #334155; margin-bottom: 14px; }
+.tabs button {
+  background: transparent; color: #94a3b8; border: none;
+  padding: 10px 16px; margin: 0; border-radius: 0;
+  border-bottom: 2px solid transparent; font-weight: normal;
+}
+.tabs button.active { color: white; border-bottom-color: #38bdf8; font-weight: bold; }
+.pane { display: none; }
+.pane.active { display: block; }
 
 .box {
   border: 1px solid #334155;
@@ -52,22 +63,19 @@ button.secondary { background: #334155; color: white; }
   padding: 14px;
 }
 
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+
 .risk {
-  padding: 12px;
-  border-radius: 4px;
-  font-weight: bold;
-  text-align: center;
-  margin-bottom: 10px;
+  padding: 12px; border-radius: 4px; font-weight: bold;
+  text-align: center; margin-bottom: 10px;
 }
 .risk-HIGH   { background: rgba(239,68,68,0.15);  color: #fecaca; border: 1px solid #ef4444; }
 .risk-MEDIUM { background: rgba(245,158,11,0.15); color: #fde68a; border: 1px solid #f59e0b; }
 .risk-LOW    { background: rgba(34,197,94,0.15);  color: #bbf7d0; border: 1px solid #22c55e; }
 
 .meta { display: flex; gap: 10px; margin-bottom: 10px; }
-.meta div {
-  flex: 1; background: #0f172a; padding: 8px; border-radius: 4px;
-  text-align: center; font-size: 12px;
-}
+.meta div { flex: 1; background: #0f172a; padding: 8px; border-radius: 4px; text-align: center; font-size: 12px; }
 .meta b { display: block; font-size: 16px; color: #38bdf8; margin-top: 2px; }
 
 .indicators { list-style: none; padding: 0; margin: 0; }
@@ -83,6 +91,20 @@ th { color: #94a3b8; font-weight: normal; font-size: 11px; text-transform: upper
 .pill-phishing   { background: rgba(239,68,68,0.2); color: #fecaca; }
 .pill-suspicious { background: rgba(245,158,11,0.2); color: #fde68a; }
 .pill-legitimate { background: rgba(34,197,94,0.2); color: #bbf7d0; }
+
+.help {
+  background: rgba(56,189,248,0.08); border-left: 3px solid #38bdf8;
+  padding: 10px 12px; font-size: 12px; color: #cbd5e1; margin-bottom: 10px;
+  border-radius: 4px;
+}
+.help code { background: #0f172a; padding: 1px 5px; border-radius: 3px; color: #38bdf8; }
+
+.msg-card {
+  background: #0f172a; border: 1px solid #334155; border-radius: 6px;
+  padding: 10px 12px; margin-bottom: 6px; font-size: 13px;
+}
+.msg-card .hdr { display: flex; justify-content: space-between; align-items: center; }
+.msg-card .preview { color: #94a3b8; font-size: 12px; margin-top: 4px; }
 </style>
 </head>
 
@@ -90,59 +112,156 @@ th { color: #94a3b8; font-weight: normal; font-size: 11px; text-transform: upper
 
 <h2>Phish<span>Guard</span> — Phishing Email Detector</h2>
 <p style="color:#94a3b8; font-size:13px;">
-  CSCI 401 · John Jay Seniors · paste an email below to scan it against our ML model
-  (falls back to MITRE ATT&amp;CK T1566 rules).
+  CSCI 401 · John Jay Seniors · live ML integration powered by Fatima's TF-IDF + Logistic Regression classifier
 </p>
 
-<div class="box">
-  <label>Sender</label>
-  <input id="sender" placeholder="e.g., support@paypa1-secure.net">
-
-  <label>Subject</label>
-  <input id="subject" placeholder="e.g., URGENT: verify your account">
-
-  <label>Body</label>
-  <textarea id="body" placeholder="Paste the email body here..."></textarea>
-
-  <button onclick="checkEmail()">Analyze</button>
-  <button class="secondary" onclick="loadPhish()">Load Phishing Sample</button>
-  <button class="secondary" onclick="loadLegit()">Load Legit Sample</button>
-  <button class="secondary" onclick="clearForm()">Clear</button>
+<div class="tabs">
+  <button class="active" data-tab="paste">Paste & Analyze</button>
+  <button data-tab="mailbox">Connect Mailbox</button>
+  <button data-tab="history">History & Stats</button>
 </div>
 
-<div class="box" id="resultBox" style="display:none;">
-  <h3 style="margin-top:0;">Result</h3>
-  <div id="result"></div>
+<!-- ============================================================ -->
+<!-- PANE 1: Paste an email                                       -->
+<!-- ============================================================ -->
+<div class="pane active" id="pane-paste">
+  <div class="box">
+    <h3>Paste an email</h3>
+    <label>Sender</label>
+    <input id="sender" placeholder="e.g., support@paypa1-secure.net">
+    <label>Subject</label>
+    <input id="subject" placeholder="e.g., URGENT: verify your account">
+    <label>Body</label>
+    <textarea id="body" placeholder="Paste the email body here..."></textarea>
+
+    <button onclick="checkEmail()">Analyze</button>
+    <button class="secondary" onclick="loadPhish()">Load Phishing Sample</button>
+    <button class="secondary" onclick="loadLegit()">Load Legit Sample</button>
+    <button class="secondary" onclick="clearForm()">Clear</button>
+  </div>
+
+  <div class="box" id="resultBox" style="display:none;">
+    <h3>Result</h3>
+    <div id="result"></div>
+  </div>
 </div>
 
-<div class="box">
-  <h3 style="margin-top:0;">Scan Summary</h3>
-  <canvas id="chart" height="80"></canvas>
+<!-- ============================================================ -->
+<!-- PANE 2: Mailbox                                              -->
+<!-- ============================================================ -->
+<div class="pane" id="pane-mailbox">
+
+  <!-- IMAP -->
+  <div class="box">
+    <h3>Connect to your Gmail / Outlook inbox (IMAP)</h3>
+    <div class="help">
+      <b>Gmail setup (one time):</b>
+      Turn on 2-Step Verification at
+      <code>myaccount.google.com/security</code>, then create an
+      <b>app password</b> at <code>myaccount.google.com/apppasswords</code>.
+      Paste that 16-char password below (not your normal Google password).
+      Credentials are sent only to <code>127.0.0.1</code> and never stored.
+    </div>
+
+    <div class="row">
+      <div>
+        <label>IMAP Server</label>
+        <select id="imap-server">
+          <option value="imap.gmail.com">imap.gmail.com (Gmail)</option>
+          <option value="outlook.office365.com">outlook.office365.com (Outlook/Office365)</option>
+          <option value="imap.mail.yahoo.com">imap.mail.yahoo.com (Yahoo)</option>
+          <option value="imap.mail.me.com">imap.mail.me.com (iCloud)</option>
+        </select>
+      </div>
+      <div>
+        <label>Port</label>
+        <input id="imap-port" value="993">
+      </div>
+      <div>
+        <label>Fetch last N</label>
+        <input id="imap-limit" value="10" type="number" min="1" max="25">
+      </div>
+    </div>
+
+    <label>Email address</label>
+    <input id="imap-user" placeholder="you@gmail.com">
+
+    <label>App password (not your Google password)</label>
+    <input id="imap-pass" type="password" placeholder="xxxx xxxx xxxx xxxx">
+
+    <button onclick="fetchImap()">Fetch & Scan Inbox</button>
+    <span id="imap-status" style="color:#94a3b8; font-size:12px; margin-left:10px;"></span>
+
+    <div id="imap-results" style="margin-top:14px;"></div>
+  </div>
+
+  <!-- .eml upload -->
+  <div class="box">
+    <h3>Upload a .eml file</h3>
+    <div class="help">
+      In Gmail: open an email → three-dot menu → <b>Download message</b> →
+      upload the resulting <code>.eml</code> file here. No credentials needed.
+    </div>
+    <input id="eml-file" type="file" accept=".eml,message/rfc822">
+    <button onclick="uploadEml()">Upload & Scan</button>
+    <div id="eml-result" style="margin-top:10px;"></div>
+  </div>
+
+  <!-- Local SMTP -->
+  <div class="box">
+    <h3>Local test mail server</h3>
+    <div class="help">
+      For a classroom demo without needing real credentials. Open a second terminal and run:
+      <br><code>python local_mailserver.py</code>
+      <br>Then send a sample:
+      <br><code>python send_test_email.py phish</code>
+      <code>python send_test_email.py legit</code>
+      <br>Verdicts print live in the server terminal <i>and</i> show up in the history table.
+    </div>
+  </div>
 </div>
 
-<div class="box">
-  <h3 style="margin-top:0;">History</h3>
-  <table>
-    <thead><tr>
-      <th>ID</th><th>Sender</th><th>Subject</th>
-      <th>Label</th><th>Confidence</th><th>When</th>
-    </tr></thead>
-    <tbody id="history"><tr><td colspan="6" style="color:#94a3b8;">No scans yet.</td></tr></tbody>
-  </table>
+<!-- ============================================================ -->
+<!-- PANE 3: History + chart                                      -->
+<!-- ============================================================ -->
+<div class="pane" id="pane-history">
+  <div class="box">
+    <h3>Scan Summary</h3>
+    <canvas id="chart" height="80"></canvas>
+  </div>
+
+  <div class="box">
+    <h3>Recent Scans</h3>
+    <table>
+      <thead><tr>
+        <th>ID</th><th>Sender</th><th>Subject</th>
+        <th>Label</th><th>Confidence</th><th>When</th>
+      </tr></thead>
+      <tbody id="history"><tr><td colspan="6" style="color:#94a3b8;">No scans yet.</td></tr></tbody>
+    </table>
+  </div>
 </div>
 
 <script>
-const API = "http://127.0.0.1:5000";
+const API = "";  // same origin as Flask
 
-// --- Chart.js bar chart (Muhammad's original, extended to 3 buckets) ---
+// ---------- Tabs ----------
+document.querySelectorAll(".tabs button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".pane").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("pane-" + btn.dataset.tab).classList.add("active");
+    if (btn.dataset.tab === "history") { loadStats(); loadHistory(); }
+  });
+});
+
+// ---------- Chart ----------
 const chart = new Chart(document.getElementById("chart"), {
   type: "bar",
   data: {
     labels: ["Phishing", "Suspicious", "Legitimate"],
-    datasets: [{
-      data: [0, 0, 0],
-      backgroundColor: ["#ef4444", "#f59e0b", "#22c55e"]
-    }]
+    datasets: [{ data: [0,0,0], backgroundColor: ["#ef4444","#f59e0b","#22c55e"] }]
   },
   options: {
     plugins: { legend: { display: false } },
@@ -151,15 +270,14 @@ const chart = new Chart(document.getElementById("chart"), {
   }
 });
 
-// --- Sample loaders ---
+// ---------- Paste & analyze ----------
 function loadPhish() {
   document.getElementById("sender").value  = "support@paypa1-secure.net";
   document.getElementById("subject").value = "URGENT: Your PayPal account has been suspended";
   document.getElementById("body").value    =
     "Dear customer, your account has been suspended due to unusual activity. " +
-    "You must verify your account immediately or it will be permanently closed. " +
-    "Click here to confirm your identity: http://192.168.1.45/paypal-login " +
-    "Please enter your password and credit card number to restore access.";
+    "Verify your account immediately at http://192.168.1.45/paypal-login. " +
+    "Enter your password and credit card number to restore access.";
 }
 function loadLegit() {
   document.getElementById("sender").value  = "no-reply@amazon.com";
@@ -173,7 +291,6 @@ function clearForm() {
   document.getElementById("resultBox").style.display = "none";
 }
 
-// --- Analyze call ---
 function checkEmail() {
   const sender  = document.getElementById("sender").value;
   const subject = document.getElementById("subject").value;
@@ -184,27 +301,101 @@ function checkEmail() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sender, subject, body })
   })
-  .then(r => r.json())
-  .then(data => {
-    renderResult(data);
-    loadStats();
-    loadHistory();
-  })
-  .catch(err => {
-    document.getElementById("resultBox").style.display = "block";
-    document.getElementById("result").innerHTML =
-      "<p style='color:#ef4444'>Error contacting backend: " + err.message + "</p>";
-  });
+    .then(r => r.json())
+    .then(data => { renderResult(data, "resultBox", "result"); loadStats(); loadHistory(); })
+    .catch(err => {
+      document.getElementById("resultBox").style.display = "block";
+      document.getElementById("result").innerHTML =
+        "<p style='color:#ef4444'>Error contacting backend: " + err.message + "</p>";
+    });
 }
 
-function renderResult(r) {
+// ---------- IMAP ----------
+function fetchImap() {
+  const payload = {
+    server:   document.getElementById("imap-server").value,
+    port:     parseInt(document.getElementById("imap-port").value, 10),
+    username: document.getElementById("imap-user").value,
+    password: document.getElementById("imap-pass").value,
+    limit:    parseInt(document.getElementById("imap-limit").value, 10),
+  };
+  const status = document.getElementById("imap-status");
+  status.textContent = "Connecting...";
+  document.getElementById("imap-results").innerHTML = "";
+
+  fetch(API + "/mailbox/imap", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ok, d}) => {
+      if (!ok) {
+        status.innerHTML = "<span style='color:#ef4444'>" + escapeHtml(d.error || "Error") + "</span>";
+        return;
+      }
+      status.textContent = "Scanned " + d.count + " messages.";
+      document.getElementById("imap-results").innerHTML =
+        d.results.map(renderMessageCard).join("");
+      loadStats(); loadHistory();
+    })
+    .catch(e => { status.innerHTML = "<span style='color:#ef4444'>" + e.message + "</span>"; });
+}
+
+// ---------- .eml upload ----------
+function uploadEml() {
+  const fileInput = document.getElementById("eml-file");
+  if (!fileInput.files.length) {
+    document.getElementById("eml-result").innerHTML =
+      "<p style='color:#ef4444'>Please pick a .eml file first.</p>";
+    return;
+  }
+  const fd = new FormData();
+  fd.append("file", fileInput.files[0]);
+
+  fetch(API + "/mailbox/upload", { method: "POST", body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        document.getElementById("eml-result").innerHTML =
+          "<p style='color:#ef4444'>" + escapeHtml(data.error) + "</p>";
+        return;
+      }
+      document.getElementById("eml-result").innerHTML = renderMessageCard(data);
+      loadStats(); loadHistory();
+    });
+}
+
+// ---------- Shared rendering ----------
+function renderMessageCard(r) {
+  const riskColor = r.risk_level === "HIGH" ? "#ef4444"
+                  : r.risk_level === "MEDIUM" ? "#f59e0b" : "#22c55e";
+  return `
+    <div class="msg-card">
+      <div class="hdr">
+        <div>
+          <b>${escapeHtml(r.subject || "(no subject)")}</b>
+          <div style="color:#94a3b8; font-size:12px;">${escapeHtml(r.sender || "")}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="color:${riskColor}; font-weight:bold;">${r.risk_level} · ${r.classification.toUpperCase()}</div>
+          <div style="color:#94a3b8; font-size:11px;">
+            score ${r.score} · conf ${(r.confidence*100).toFixed(0)}% · ${r.detector}
+          </div>
+        </div>
+      </div>
+      <div class="preview">${escapeHtml((r.preview || "").slice(0, 240))}</div>
+    </div>`;
+}
+
+function renderResult(r, boxId, resultId) {
   const indicators = (r.indicators || []).map(i => {
     const text = (typeof i === "string") ? i : `[${i.type}] ${i.detail}`;
     return `<li>${escapeHtml(text)}</li>`;
   }).join("");
 
-  document.getElementById("resultBox").style.display = "block";
-  document.getElementById("result").innerHTML = `
+  document.getElementById(boxId).style.display = "block";
+  document.getElementById(resultId).innerHTML = `
     <div class="risk risk-${r.risk_level}">
       ${r.risk_level} RISK — ${r.classification.toUpperCase()}
     </div>
@@ -218,37 +409,30 @@ function renderResult(r) {
   `;
 }
 
-// --- Stats chart ---
 function loadStats() {
-  fetch(API + "/stats")
-    .then(r => r.json())
-    .then(s => {
-      chart.data.datasets[0].data = [s.phishing, s.suspicious, s.legitimate];
-      chart.update();
-    });
+  fetch(API + "/stats").then(r => r.json()).then(s => {
+    chart.data.datasets[0].data = [s.phishing, s.suspicious, s.legitimate];
+    chart.update();
+  });
 }
 
-// --- History table ---
 function loadHistory() {
-  fetch(API + "/history?limit=25")
-    .then(r => r.json())
-    .then(rows => {
-      const tbody = document.getElementById("history");
-      if (!rows.length) {
-        tbody.innerHTML = "<tr><td colspan='6' style='color:#94a3b8;'>No scans yet.</td></tr>";
-        return;
-      }
-      tbody.innerHTML = rows.map(row => `
-        <tr>
-          <td>#${row.id}</td>
-          <td>${escapeHtml(row.sender || "")}</td>
-          <td>${escapeHtml(row.subject || "")}</td>
-          <td><span class="pill pill-${row.label}">${row.label || ""}</span></td>
-          <td>${row.confidence ? (row.confidence*100).toFixed(0)+"%" : ""}</td>
-          <td style="color:#94a3b8; font-size:12px;">${(row.timestamp||"").slice(0,19)}</td>
-        </tr>
-      `).join("");
-    });
+  fetch(API + "/history?limit=25").then(r => r.json()).then(rows => {
+    const tbody = document.getElementById("history");
+    if (!rows.length) {
+      tbody.innerHTML = "<tr><td colspan='6' style='color:#94a3b8;'>No scans yet.</td></tr>";
+      return;
+    }
+    tbody.innerHTML = rows.map(row => `
+      <tr>
+        <td>#${row.id}</td>
+        <td>${escapeHtml(row.sender || "")}</td>
+        <td>${escapeHtml(row.subject || "")}</td>
+        <td><span class="pill pill-${row.label}">${row.label || ""}</span></td>
+        <td>${row.confidence ? (row.confidence*100).toFixed(0)+"%" : ""}</td>
+        <td style="color:#94a3b8; font-size:12px;">${(row.timestamp||"").slice(0,19)}</td>
+      </tr>`).join("");
+  });
 }
 
 function escapeHtml(s) {
@@ -256,7 +440,7 @@ function escapeHtml(s) {
     ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
-// --- Boot ---
+// Boot
 loadStats();
 loadHistory();
 </script>

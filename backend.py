@@ -1,62 +1,107 @@
 # ============================================================
 # Phishing Detection Backend API
 # CSCI 401 - John Jay Seniors
-# Author: Michael Cruz - Database & Backend Engineer
+# Author: Michael Cruz — Database & Backend Engineer
+#         Fatima Saleem — AI System Integration
 # ============================================================
 #
-# Flask REST API that ties the whole system together:
-#   - Tries Fatima's ML model (ml_model.predict) first.
-#   - Falls back to Imdadul's rule-based detector
-#     (threat_analysis.analyze_email) when model.pkl is missing
-#     or the ML call fails.
-#   - Persists every scan to SQLite via Michael's database_sql.
-#   - Serves Muhammad's frontend.html at /.
-#
-# Endpoints:
-#   GET  /          -> frontend.html
-#   POST /analyze   -> classify an email {sender, subject, body}
-#   GET  /history   -> last N scans
-#   GET  /stats     -> totals by label
-#   GET  /health    -> {"status": "ok", ...}
+# Flask REST API that ties the whole system together.
+#   - /analyze          : hybrid (ML first, rule-based fallback)
+#   - /mailbox/imap     : fetch recent mail from a live IMAP inbox
+#                         (Gmail, Outlook, iCloud, ...) and scan each
+#                         with the ML model
+#   - /mailbox/upload   : upload a .eml file and scan it
+#   - /history, /stats  : persistence layer (SQLite)
 #
 # Run:
 #   pip install -r requirements.txt
-#   python database_sql.py    # one-time, creates phishing.db
-#   python ml_model.py --train  # optional, trains Fatima's classifier
+#   python database_sql.py    # one-time
+#   python ml_model.py --train  # one-time (auto-runs on first /analyze)
 #   python backend.py
 #   open http://127.0.0.1:5000
 # ============================================================
 
 from pathlib import Path
+
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 import database_sql as db
+import mailbox_service
 import threat_analysis
 
-# Try to import the ML model. If scikit-learn or model.pkl is missing,
-# the backend just uses the rule-based detector.
+# Load ML model module (and auto-train if model.pkl is missing)
 try:
     import ml_model
     ML_AVAILABLE = True
 except Exception as e:
     ml_model = None
     ML_AVAILABLE = False
-    print(f"[!] ml_model not importable ({e}); using rule-based detector only.")
+    print(f"[!] ml_model not importable ({e}); rule-based detector only.")
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR   = Path(__file__).resolve().parent
+MODEL_PATH = BASE_DIR / "model.pkl"
 
 app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="")
 CORS(app)
 
-# Create tables on first run
 db.init_db()
 
 
 # ------------------------------------------------------------------
-# Serve the frontend
+# Helpers
 # ------------------------------------------------------------------
+def _ensure_ml_model():
+    """Train the classifier on the starter dataset if model.pkl is missing."""
+    if ML_AVAILABLE and not MODEL_PATH.exists():
+        print("[!] model.pkl not found — training now from the starter dataset...")
+        ml_model.train()
 
+
+def _normalize(result: dict) -> dict:
+    """Common output shape for both ML and rule detectors."""
+    label = str(result.get("classification", "legitimate")).lower()
+    if label not in ("legitimate", "suspicious", "phishing"):
+        label = "legitimate"
+    score = int(result.get("score", 0))
+    return {
+        "risk_level":     result.get("risk_level", "LOW"),
+        "classification": label,
+        "score":          score,
+        "confidence":     float(result.get("confidence",
+                            min(0.5 + 0.07 * score, 0.95))),
+        "indicators":     result.get("indicators", []),
+    }
+
+
+def _scan_ml_only(sender, subject, body):
+    """Force the ML model (auto-train if needed)."""
+    if not ML_AVAILABLE:
+        return _normalize(threat_analysis.analyze_email(subject, sender, body)), "rules"
+    _ensure_ml_model()
+    try:
+        return _normalize(ml_model.predict(sender=sender, subject=subject, body=body)), "ml"
+    except Exception as e:
+        db.log_event("ml_error", str(e))
+        return _normalize(threat_analysis.analyze_email(subject, sender, body)), "rules"
+
+
+def _scan_hybrid(sender, subject, body):
+    """Try ML, fall back to rules."""
+    if ML_AVAILABLE:
+        try:
+            _ensure_ml_model()
+            return _normalize(ml_model.predict(sender=sender, subject=subject, body=body)), "ml"
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            db.log_event("ml_error", str(e))
+    return _normalize(threat_analysis.analyze_email(subject, sender, body)), "rules"
+
+
+# ------------------------------------------------------------------
+# Static frontend
+# ------------------------------------------------------------------
 @app.route("/")
 def home():
     for candidate in ("frontend.html", "PhishGuard.html"):
@@ -65,30 +110,22 @@ def home():
     return "<h1>PhishGuard backend is running</h1><p>No frontend file found.</p>"
 
 
-# ------------------------------------------------------------------
-# Health check
-# ------------------------------------------------------------------
-
 @app.route("/health")
 def health():
     return jsonify({
         "status": "ok",
-        "ml_available": ML_AVAILABLE,
-        "model_file_exists": (BASE_DIR / "model.pkl").exists(),
+        "ml_available":       ML_AVAILABLE,
+        "model_file_exists":  MODEL_PATH.exists(),
     })
 
 
 # ------------------------------------------------------------------
-# Analyze an email
+# Core /analyze (hybrid)
 # ------------------------------------------------------------------
-
 @app.route("/analyze", methods=["POST"])
 def analyze():
     data = request.get_json(silent=True) or {}
-
-    # Accept either the structured form {sender, subject, body}
-    # or the older {email: "..."} blob (for backwards compatibility
-    # with the first frontend prototype).
+    # Accept both the structured payload and the older {email:"..."} blob.
     if "email" in data and not any(k in data for k in ("sender", "subject", "body")):
         sender, subject, body = "", "", data.get("email", "")
     else:
@@ -96,52 +133,107 @@ def analyze():
         subject = data.get("subject", "")
         body    = data.get("body", "")
 
-    result = None
-    detector = "rules"
-
-    # 1) Try the ML model
-    if ML_AVAILABLE:
-        try:
-            result = ml_model.predict(sender=sender, subject=subject, body=body)
-            detector = "ml"
-        except FileNotFoundError:
-            result = None  # model.pkl not trained yet, fall back
-        except Exception as e:
-            db.log_event("ml_error", str(e))
-            result = None
-
-    # 2) Fall back to Imdadul's rule-based detector
-    if result is None:
-        result = threat_analysis.analyze_email(subject, sender, body)
-        detector = "rules"
-
-    # Persist
+    result, detector = _scan_hybrid(sender, subject, body)
     email_id = db.save_analysis(sender, subject, body, result, detector=detector)
-    db.log_event(
-        "analyze",
-        f"email_id={email_id} detector={detector} "
-        f"label={str(result.get('classification','')).lower()}"
-    )
+    db.log_event("analyze",
+                 f"email_id={email_id} detector={detector} label={result['classification']}")
 
-    # Build response — normalize label to lowercase so the frontend
-    # and the DB agree on casing.
-    response = {
+    out = dict(result)
+    out["email_id"] = email_id
+    out["detector"] = detector
+    return jsonify(out)
+
+
+# ------------------------------------------------------------------
+# Mailbox: IMAP fetch (Gmail / Outlook / iCloud / ...)
+# ------------------------------------------------------------------
+@app.route("/mailbox/imap", methods=["POST"])
+def mailbox_imap():
+    """Connect to a real inbox and scan the most recent messages.
+
+    Body:
+      { "server":   "imap.gmail.com",
+        "port":     993,
+        "username": "you@gmail.com",
+        "password": "<app password>",
+        "limit":    10,
+        "folder":   "INBOX" }
+    """
+    data = request.get_json(silent=True) or {}
+    try:
+        emails = mailbox_service.fetch_imap(
+            server   = data.get("server", "imap.gmail.com"),
+            port     = data.get("port", 993),
+            username = data.get("username", ""),
+            password = data.get("password", ""),
+            limit    = data.get("limit", 10),
+            folder   = data.get("folder", "INBOX"),
+        )
+    except (ValueError,) as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        # Covers IMAP auth errors, socket errors, etc.
+        db.log_event("imap_error", str(e))
+        return jsonify({"error": f"IMAP error: {e}"}), 400
+
+    results = []
+    for em in emails:
+        result, detector = _scan_ml_only(em["sender"], em["subject"], em["body"])
+        email_id = db.save_analysis(em["sender"], em["subject"], em["body"],
+                                     result, detector=detector)
+        out = dict(result)
+        out.update({
+            "email_id": email_id,
+            "detector": detector,
+            "sender":   em["sender"],
+            "subject":  em["subject"],
+            "date":     em["date"],
+            "preview":  (em["body"] or "")[:240],
+        })
+        results.append(out)
+
+    db.log_event("mailbox_imap", f"fetched={len(results)} user={data.get('username','')}")
+    return jsonify({"count": len(results), "results": results})
+
+
+# ------------------------------------------------------------------
+# Mailbox: .eml file upload
+# ------------------------------------------------------------------
+@app.route("/mailbox/upload", methods=["POST"])
+def mailbox_upload():
+    """Upload a single .eml file (multipart field name 'file')."""
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded (expected multipart field 'file')."}), 400
+
+    raw = request.files["file"].read()
+    if not raw:
+        return jsonify({"error": "Uploaded file is empty."}), 400
+
+    try:
+        em = mailbox_service.parse_eml_bytes(raw)
+    except Exception as e:
+        return jsonify({"error": f"Could not parse .eml: {e}"}), 400
+
+    result, detector = _scan_ml_only(em["sender"], em["subject"], em["body"])
+    email_id = db.save_analysis(em["sender"], em["subject"], em["body"],
+                                 result, detector=detector)
+
+    out = dict(result)
+    out.update({
         "email_id": email_id,
         "detector": detector,
-        "risk_level":     result.get("risk_level", "LOW"),
-        "classification": str(result.get("classification", "legitimate")).lower(),
-        "score":          int(result.get("score", 0)),
-        "confidence":     float(result.get("confidence",
-                            min(0.5 + 0.07 * int(result.get("score", 0)), 0.95))),
-        "indicators":     result.get("indicators", []),
-    }
-    return jsonify(response)
+        "sender":   em["sender"],
+        "subject":  em["subject"],
+        "date":     em["date"],
+        "preview":  (em["body"] or "")[:240],
+    })
+    db.log_event("mailbox_upload", f"email_id={email_id} from={em['sender']}")
+    return jsonify(out)
 
 
 # ------------------------------------------------------------------
 # History + stats
 # ------------------------------------------------------------------
-
 @app.route("/history", methods=["GET"])
 def history():
     try:
@@ -159,11 +251,12 @@ def stats():
 # ------------------------------------------------------------------
 # Entry point
 # ------------------------------------------------------------------
-
 if __name__ == "__main__":
+    _ensure_ml_model()  # train at boot so ML-only endpoints always work
     print("=" * 60)
     print("  PhishGuard backend starting at http://127.0.0.1:5000")
-    print(f"  ML model available: {ML_AVAILABLE and (BASE_DIR / 'model.pkl').exists()}")
-    print("  Endpoints: /  /analyze  /history  /stats  /health")
+    print(f"  ML model available: {ML_AVAILABLE and MODEL_PATH.exists()}")
+    print("  Endpoints: /  /analyze  /mailbox/imap  /mailbox/upload")
+    print("             /history  /stats  /health")
     print("=" * 60)
     app.run(host="127.0.0.1", port=5000, debug=True)
