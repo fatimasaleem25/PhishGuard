@@ -8,15 +8,18 @@ ATT&CK T1566 scorer. Connects to real mailboxes (Gmail, Outlook,
 iCloud, Yahoo) over IMAP, accepts `.eml` file uploads, and ships with
 a local SMTP test server for classroom demos.
 
+**Repository:** https://github.com/fatimasaleem25/PhishGuard  
+**Final Report:** Submitted via Brightspace — CSCI 401 Spring 2026
+
 ---
 
 ## Team
 
 | Member | Role | Owns |
 |---|---|---|
-| Michael Cruz | Database & Schema | `database_sql.py` |
 | Fatima Saleem | AI System Lead | `ml_model.py`, `mailbox_service.py`, `local_mailserver.py` |
-| Muhammad H. Kardar | Frontend & Backend | `frontend.html`, `backend.py` |
+| Muhammad H. Kardar | Frontend & Backend Engineer | `frontend.html`, `backend.py` |
+| Michael Cruz | Database Engineer | `database_sql.py` |
 | Imdadul Meraz | Security & Threat Analysis Specialist | `threat_analysis.py` |
 | Kevin Minchala | Data Engineering Lead | `phishing_dataset.csv` |
 
@@ -33,10 +36,10 @@ PhishGuard/
 ├── database_sql.py         Michael's SQLite schema + CRUD helpers.
 ├── mailbox_service.py      Fatima's IMAP + .eml parser.
 ├── local_mailserver.py     Local test SMTP server on port 1025.
-├── send_test_email.py      CLI: sends sample phish/legit emails to the local server.
+├── send_test_email.py      CLI: sends sample phish/legit/subtle emails to local server.
 ├── frontend.html           Muhammad's UI. Served by backend.py at /.
 ├── phishing_dataset.csv    Kevin's labeled training data.
-├── model.pkl               Trained ML model (auto-generated).
+├── model.pkl               Trained ML model (auto-generated on first run).
 ├── phishing.db             SQLite DB (auto-generated on first run).
 └── requirements.txt        Python dependencies.
 ```
@@ -51,7 +54,7 @@ Windows it's usually just `python`.
 ### 1. Clone the repo
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/fatimasaleem25/PhishGuard.git
 cd PhishGuard
 ```
 
@@ -92,10 +95,10 @@ You should see: `Database created successfully at .../phishing.db`.
 python ml_model.py --train
 ```
 
-Prints **Precision / Recall / F1** on the held-out test set and saves
+Prints **Accuracy / Precision / Recall / F1** on the held-out test set and saves
 `model.pkl`. The backend auto-trains on first launch if you skip this,
-so it's optional — but run it yourself if you want to screenshot the
-metrics for the final report.
+so it is optional — but run it yourself if you want to see the metrics
+or screenshot them for the final report.
 
 ---
 
@@ -108,7 +111,7 @@ source venv/bin/activate
 python backend.py
 ```
 
-Open **http://127.0.0.1:5000** in your browser. You'll see three tabs:
+Open **http://127.0.0.1:5000** in your browser. You will see three tabs:
 
 1. **Paste & Analyze** — paste any email, see risk score + indicators.
 2. **Connect Mailbox** — three ways to test on real email (below).
@@ -124,8 +127,8 @@ Press `Ctrl+C` in the terminal to stop the server.
 
 **Gmail setup (one time):**
 
-1. Turn on 2-Step Verification at <https://myaccount.google.com/security>.
-2. Create an **App Password** at <https://myaccount.google.com/apppasswords>
+1. Turn on 2-Step Verification at https://myaccount.google.com/security
+2. Create an **App Password** at https://myaccount.google.com/apppasswords
    (Mail → Other → "PhishGuard"). Copy the 16-character password.
 
 In the PhishGuard UI, go to the **Connect Mailbox** tab:
@@ -182,13 +185,13 @@ Base URL: `http://127.0.0.1:5000`
 
 | Method | Path | Body | Purpose |
 |---|---|---|---|
-| GET  | `/`               | — | Serves `frontend.html` |
-| GET  | `/health`         | — | `{"status":"ok", "ml_available":bool, "model_file_exists":bool}` |
-| POST | `/analyze`        | `{sender, subject, body}` | Hybrid scan (ML first, rules fallback) |
-| POST | `/mailbox/imap`   | `{server, port, username, password, limit}` | Fetch and scan IMAP inbox |
-| POST | `/mailbox/upload` | multipart `file=<.eml>` | Parse and scan a `.eml` file |
-| GET  | `/history?limit=N`| — | Last N scans |
-| GET  | `/stats`          | — | Counts by label |
+| GET  | `/`                | — | Serves `frontend.html` |
+| GET  | `/health`          | — | `{"status":"ok", "ml_available":bool, "model_file_exists":bool}` |
+| POST | `/analyze`         | `{sender, subject, body}` | Hybrid scan (ML first, rules fallback) |
+| POST | `/mailbox/imap`    | `{server, port, username, password, limit}` | Fetch and scan IMAP inbox |
+| POST | `/mailbox/upload`  | multipart `file=<.eml>` | Parse and scan a `.eml` file |
+| GET  | `/history?limit=N` | — | Last N scans |
+| GET  | `/stats`           | — | Counts by label |
 
 ### Sample `/analyze` response
 
@@ -214,7 +217,7 @@ Base URL: `http://127.0.0.1:5000`
 ### `zsh: command not found: python` (macOS)
 
 On macOS the system command is `python3`, not `python`. But inside an
-activated venv, `python` works. If you haven't activated yet:
+activated venv, `python` works. If you have not activated yet:
 
 ```bash
 source venv/bin/activate
@@ -222,7 +225,7 @@ source venv/bin/activate
 
 ### `ModuleNotFoundError: No module named 'flask'`
 
-You didn't activate the venv, or you didn't install dependencies.
+You did not activate the venv, or you did not install dependencies.
 
 ```bash
 source venv/bin/activate
@@ -234,9 +237,9 @@ pip install -r requirements.txt
 Mac's AirPlay Receiver uses port 5000 by default. Either turn it off
 in System Settings → General → AirDrop & Handoff → "AirPlay Receiver",
 or change the last line of `backend.py` to `port=5001` and use
-<http://127.0.0.1:5001>.
+http://127.0.0.1:5001
 
-### `bquote>` or `dquote>` appears in the terminal
+### `` bquote> `` or `` dquote> `` appears in the terminal
 
 You pasted something with an unclosed quote. Press `Ctrl+C` to cancel
 and get your prompt back.
@@ -248,8 +251,8 @@ password. You must use an **App Password**. See the Gmail setup above.
 
 ### `model.pkl` not found
 
-The backend auto-trains on first boot. If something went wrong, just
-run it manually:
+The backend auto-trains on first boot. If something went wrong, run it
+manually:
 
 ```bash
 python ml_model.py --train
@@ -262,11 +265,15 @@ python ml_model.py --train
 | Rubric item | Where to find it |
 |---|---|
 | Problem + technical design | Project Proposal PDF + this README |
-| Cybersecurity coverage | `threat_analysis.py` (MITRE T1566) |
-| ML model + evaluation (precision/recall/F1) | `python ml_model.py --train` output |
-| Working code | `backend.py` + `frontend.html` + integrated modules |
+| Source code documentation | Inline comments in all `.py` files + this README |
+| How to run tutorial | Setup and Running sections of this README |
+| Example run with screenshots | Final Report PDF (Figures 3, 4, 5) |
+| Cybersecurity coverage | `threat_analysis.py` (MITRE ATT&CK T1566) |
+| ML model + evaluation (Accuracy / Precision / Recall / F1) | `python ml_model.py --train` output |
+| Working code | `backend.py` + `frontend.html` + all integrated modules |
 | Dataset | `phishing_dataset.csv` |
 | Real-world integration | `/mailbox/imap`, `/mailbox/upload`, `local_mailserver.py` |
+| Ethical discussion | Final Report PDF — Section 4 (Michael Cruz) |
 
 ---
 
