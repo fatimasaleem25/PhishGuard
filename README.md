@@ -14,9 +14,9 @@ a local SMTP test server for classroom demos.
 
 | Member | Role | Owns |
 |---|---|---|
-| Michael Cruz | Database & Backend Engineer | `backend.py`, `database_sql.py` |
+| Michael Cruz | Database & Schema | `database_sql.py` |
 | Fatima Saleem | AI System Lead | `ml_model.py`, `mailbox_service.py`, `local_mailserver.py` |
-| Muhammad H. Kardar | Frontend & Development Engineer | `frontend.html`, Chrome extension |
+| Muhammad H. Kardar | Frontend & Backend | `frontend.html`, `backend.py` |
 | Imdadul Meraz | Security & Threat Analysis Specialist | `threat_analysis.py` |
 | Kevin Minchala | Data Engineering Lead | `phishing_dataset.csv` |
 
